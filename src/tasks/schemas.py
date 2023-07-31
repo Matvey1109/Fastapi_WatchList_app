@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 
 
-class CreatedTask(BaseModel):
+class CreateTask(BaseModel):
     id: int
     title: str
     description: str
