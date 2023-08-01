@@ -1,3 +1,4 @@
+import time
 from fastapi import APIRouter, Depends, HTTPException, status
 from src.tasks.models import Task
 from src.tasks.schemas import CreateTask
@@ -6,6 +7,7 @@ from src.users.models import User
 from src.database import AsyncSession, get_async_session
 from sqlalchemy import select, insert, and_
 from datetime import datetime
+from fastapi_cache.decorator import cache
 
 router = APIRouter(
     prefix="/tasks",
@@ -14,8 +16,10 @@ router = APIRouter(
 
 
 @router.get("")
+@cache(expire=30)
 async def get_tasks(session: AsyncSession = Depends(get_async_session), user: User = Depends(get_current_user)):
     try:
+        time.sleep(0.3)
         query = select(Task).where(Task.user_id == user.id).order_by(Task.id.desc())
         result = await session.execute(query)
         data = [{f"Task №{row[0].id}": row[0]} for row in result]
