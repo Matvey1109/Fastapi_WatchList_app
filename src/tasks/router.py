@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from src.tasks.models import Task
 from src.tasks.schemas import CreateTask
+from src.users.router import get_current_user
+from src.users.models import User
 from src.database import AsyncSession, get_async_session
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, and_
 from datetime import datetime
 
 router = APIRouter(
@@ -12,9 +14,9 @@ router = APIRouter(
 
 
 @router.get("")
-async def get_tasks(session: AsyncSession = Depends(get_async_session)):
+async def get_tasks(session: AsyncSession = Depends(get_async_session), user: User = Depends(get_current_user)):
     try:
-        query = select(Task).order_by(Task.id.desc()).limit(5)
+        query = select(Task).where(Task.user_id == user.id).order_by(Task.id.desc())
         result = await session.execute(query)
         data = [{f"Task №{row[0].id}": row[0]} for row in result]
         return {
@@ -31,13 +33,17 @@ async def get_tasks(session: AsyncSession = Depends(get_async_session)):
 
 
 @router.post("")
-async def add_task(new_task: CreateTask, session: AsyncSession = Depends(get_async_session)):
+async def add_task(new_task: CreateTask, session: AsyncSession = Depends(get_async_session),
+                   user: User = Depends(get_current_user)):
     try:
-        query = insert(Task).values(**new_task.model_dump())
-        query_all_tasks = select(Task).where(Task.id == new_task.id)
+        query_all_tasks = select(Task).where(and_(Task.title == new_task.title, Task.user_id == user.id))
         all_tasks = await session.execute(query_all_tasks)
         if len(all_tasks.fetchall()) > 0:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+        task_values = new_task.model_dump()
+        task_values["user_id"] = user.id
+        query = insert(Task).values(**task_values)
         await session.execute(query)
         await session.commit()
         return {
@@ -49,7 +55,7 @@ async def add_task(new_task: CreateTask, session: AsyncSession = Depends(get_asy
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={
             "status": "error404",
             "data": None,
-            "details": "There is already task with this id"
+            "details": "There is already task with this title"
         })
     except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail={
@@ -60,13 +66,15 @@ async def add_task(new_task: CreateTask, session: AsyncSession = Depends(get_asy
 
 
 @router.delete("")
-async def delete_task_by_id(task_id: int, session: AsyncSession = Depends(get_async_session)):
+async def delete_task_by_title(task_title: str, session: AsyncSession = Depends(get_async_session),
+                               user: User = Depends(get_current_user)):
     try:
-        query = select(Task).where(Task.id == task_id)
+        query = select(Task).where(and_(Task.user_id == user.id, Task.title == task_title))
         task = await session.execute(query)
-        if not task.scalar():
+        task = task.scalar_one_or_none()
+        if task is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-        await session.delete(task.scalar_one())
+        await session.delete(task)
         await session.commit()
         return {
             "status": "success",
@@ -88,14 +96,15 @@ async def delete_task_by_id(task_id: int, session: AsyncSession = Depends(get_as
 
 
 @router.put("")
-async def update_task_by_id(task_id: int, title: str = None, description: str = None, completed: bool = None,
-                      session: AsyncSession = Depends(get_async_session)):
+async def update_task_by_title(task_title: str, title: str = None, description: str = None, completed: bool = None,
+                               session: AsyncSession = Depends(get_async_session),
+                               user: User = Depends(get_current_user)):
     try:
-        query = select(Task).where(Task.id == task_id)
+        query = select(Task).where(and_(Task.user_id == user.id, Task.title == task_title))
         task = await session.execute(query)
-        if not task.scalar():
+        task = task.scalar_one_or_none()
+        if task is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-        task = task.scalar_one()
         if title:
             task.title = title
         if description:

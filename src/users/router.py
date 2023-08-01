@@ -19,3 +19,7 @@ async def read_user_me(current_user: User = Depends(fastapi_users.current_user(a
                        user_db=Depends(get_user_db)):
     user = await user_db.get(current_user.id)
     return user
+
+
+async def get_current_user(user: User = Depends(read_user_me)):
+    return user
