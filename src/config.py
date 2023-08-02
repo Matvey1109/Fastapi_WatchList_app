@@ -9,3 +9,5 @@ DB_USER = os.environ.get("DB_USER")
 DB_PASS = os.environ.get("DB_PASS")
 
 SECRET = os.environ.get("SECRET")
+
+API_KEY = os.environ.get("API_KEY")

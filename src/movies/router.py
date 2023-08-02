@@ -1,7 +1,7 @@
 import time
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.tasks.models import Task
-from src.tasks.schemas import CreateTask
+from src.movies.models import Movie
+from src.movies.schemas import AddMovie
 from src.users.router import get_current_user
 from src.users.models import User
 from src.database import AsyncSession, get_async_session
