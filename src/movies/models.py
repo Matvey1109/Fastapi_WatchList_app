@@ -4,14 +4,14 @@ from src.users.models import User
 from datetime import datetime
 
 
-# https://image.tmdb.org/t/p/original
 class Movie(Base):
-    __tablename__ = "Movie"
+    __tablename__ = "movie"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     description = Column(String, index=True)
-    year = Column(Integer)
+    year = Column(String)
+    your_score = Column(Integer, default=None)
     average_score = Column(Float)
     original_language = Column(String, index=True)
     poster_path = Column(String, index=True)
